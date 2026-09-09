@@ -1,23 +1,27 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/db/pool';
-import { handleError } from '@/lib/errors';
+import { NotFoundError, handleError } from '@/lib/errors';
 import { toRestaurant } from '@/lib/types';
+import { parseId, parseRestaurantInput } from '@/lib/validation';
 
 type Params = { params: { id: string } };
 
 /**
  * GET /api/restaurants/:id
- * Returns a single restaurant, or 404 if it doesn't exist.
+ * Returns a single restaurant, or 404 if it doesn't exist (or :id isn't a
+ * positive integer).
  */
 export async function GET(_req: Request, { params }: Params) {
   try {
+    const id = parseId(params.id);
+
     const { rows } = await pool.query(
       'SELECT * FROM restaurants WHERE id = $1',
-      [params.id]
+      [id]
     );
 
     if (rows.length === 0) {
-      return NextResponse.json({ error: 'Restaurant not found' }, { status: 404 });
+      throw new NotFoundError('Restaurant not found');
     }
 
     return NextResponse.json(toRestaurant(rows[0]));
@@ -29,23 +33,23 @@ export async function GET(_req: Request, { params }: Params) {
 /**
  * PUT /api/restaurants/:id
  * Update an existing restaurant.
- *
- * TODO (A3): validate the body the same way POST does.
  */
 export async function PUT(req: Request, { params }: Params) {
   try {
+    const id = parseId(params.id);
     const body = await req.json();
+    const input = parseRestaurantInput(body);
 
     const { rows } = await pool.query(
       `UPDATE restaurants
        SET name = $1, cuisine = $2, address = $3, rating = $4
        WHERE id = $5
        RETURNING *`,
-      [body.name, body.cuisine ?? null, body.address ?? null, body.rating ?? null, params.id]
+      [input.name, input.cuisine, input.address, input.rating, id]
     );
 
     if (rows.length === 0) {
-      return NextResponse.json({ error: 'Restaurant not found' }, { status: 404 });
+      throw new NotFoundError('Restaurant not found');
     }
 
     return NextResponse.json(toRestaurant(rows[0]));
@@ -63,13 +67,15 @@ export async function PUT(req: Request, { params }: Params) {
  */
 export async function DELETE(_req: Request, { params }: Params) {
   try {
+    const id = parseId(params.id);
+
     const { rowCount } = await pool.query(
       'DELETE FROM restaurants WHERE id = $1',
-      [params.id]
+      [id]
     );
 
     if (rowCount === 0) {
-      return NextResponse.json({ error: 'Restaurant not found' }, { status: 404 });
+      throw new NotFoundError('Restaurant not found');
     }
 
     return new NextResponse(null, { status: 204 });
