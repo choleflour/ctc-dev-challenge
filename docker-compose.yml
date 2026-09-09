@@ -28,7 +28,7 @@ services:
       POSTGRES_DB: feeding_brennen
     ports:
       # host:container - exposes the DB on localhost:5432 for the native server.
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       # Named volume so your data survives `docker compose down` (but not -v).
       - feeding_brennen_pgdata:/var/lib/postgresql/data
