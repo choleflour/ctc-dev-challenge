@@ -26,6 +26,11 @@ export class NotFoundError extends ApiError {
   }
 }
 
+/** node-postgres attaches a Postgres error `code` to thrown errors. */
+function isPgError(err: unknown): err is { code: string } {
+  return typeof err === 'object' && err !== null && 'code' in err;
+}
+
 /**
  * Central error -> HTTP response mapper for the API route handlers. Call it
  * from a route's `catch` block so error handling lives in one place:
@@ -44,6 +49,15 @@ export function handleError(err: unknown): NextResponse {
   // `req.json()` throws this on a body that isn't valid JSON.
   if (err instanceof SyntaxError) {
     return NextResponse.json({ error: 'Malformed JSON body' }, { status: 400 });
+  }
+
+  // Foreign key violation, e.g. a visit referencing a restaurantId that
+  // doesn't exist.
+  if (isPgError(err) && err.code === '23503') {
+    return NextResponse.json(
+      { error: 'Referenced resource does not exist' },
+      { status: 400 }
+    );
   }
 
   // Unexpected - don't leak internals (stack traces, raw DB errors) to the client.
