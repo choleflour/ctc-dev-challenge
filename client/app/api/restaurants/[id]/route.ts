@@ -13,7 +13,7 @@ type Params = { params: { id: string } };
  */
 export async function GET(_req: Request, { params }: Params) {
   try {
-    const id = parseId(params.id);
+    const id = parseId(params.id, 'Restaurant not found');
 
     const { rows } = await pool.query(
       'SELECT * FROM restaurants WHERE id = $1',
@@ -36,7 +36,7 @@ export async function GET(_req: Request, { params }: Params) {
  */
 export async function PUT(req: Request, { params }: Params) {
   try {
-    const id = parseId(params.id);
+    const id = parseId(params.id, 'Restaurant not found');
     const body = await req.json();
     const input = parseRestaurantInput(body);
 
@@ -67,7 +67,7 @@ export async function PUT(req: Request, { params }: Params) {
  */
 export async function DELETE(_req: Request, { params }: Params) {
   try {
-    const id = parseId(params.id);
+    const id = parseId(params.id, 'Restaurant not found');
 
     const { rowCount } = await pool.query(
       'DELETE FROM restaurants WHERE id = $1',
